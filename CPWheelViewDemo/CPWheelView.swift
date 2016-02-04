@@ -8,24 +8,47 @@
 
 import UIKit
 
+public class CPWheelViewUnit: NSObject {
+    let view: UIView
+    var position: CGFloat
+    public init(view: UIView, position: CGFloat) {
+//        super.init()
+        self.view = view
+        self.position = position
+    }
+}
+
 public class CPWheelView: UIView {
     public var decellerateRate: CGFloat = 0.5
     var currentOffset: CGFloat = 0.0
-    var viewArray: [UIView] = [UIView]()
+    var lastTouchY: CGFloat = 0.0
+    var viewArray: [CPWheelViewUnit] = [CPWheelViewUnit]()
+    let max = 100
     required public init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
+        let panGesture = UIPanGestureRecognizer(target: self, action: "onPan:")
+        panGesture.minimumNumberOfTouches = 1
+        self.addGestureRecognizer(panGesture)
+        for i in 0...max {
+            var frame = CGRectMake(0, 0, 50, 50)
+            frame.origin = self.pointOnCircle(Float(180), center: self.center, index: CGFloat(i))
+            let view = UILabel(frame: frame)
+            view.text = "\(i)"
+            view.backgroundColor = UIColor.greenColor()
+            viewArray.append(CPWheelViewUnit(view: view, position: CGFloat(i)))
+            view.tag = i
+            self.addSubview(view)
+        }
     }
     
-    public override func didMoveToSuperview() {
-        super.didMoveToSuperview()
-        self.addGestureRecognizer(UIPanGestureRecognizer(target: self, action: "onPan:"))
-        for i in 1...10 {
-            var frame = CGRectMake(0, 0, 10, 10)
-            frame.origin = self.pointOnCircle(Float(self.frame.size.width / CGFloat(2.0)), center: self.center, index: i)
-            let view = UIView(frame: frame)
-            view.backgroundColor = UIColor.greenColor()
-            viewArray.append(view)
-            self.addSubview(view)
+    public override func layoutSubviews() {
+        super.layoutSubviews()
+        for i in 0...max {
+            var frame = CGRectMake(0, 0, 50, 50)
+            frame.origin = self.pointOnCircle(Float(180), center: self.center, index: CGFloat(i))
+            let item = viewArray[i]
+            item.view.frame = frame
+            item.view.backgroundColor = UIColor.greenColor()
         }
     }
     
@@ -33,32 +56,87 @@ public class CPWheelView: UIView {
         switch (panGesture.state) {
         case .Began:
             print("Began")
-            currentOffset = panGesture.translationInView(self).y
+            lastTouchY = panGesture.translationInView(self).y
+
             break
         case .Changed:
-            let movedDistance = currentOffset - panGesture.translationInView(self).y
-            for view in viewArray {
-                var viewFrame = view.frame
-                viewFrame.origin.y -= movedDistance
-                view.frame = viewFrame
+            currentOffset = (lastTouchY - panGesture.translationInView(self).y) / 100
+            for i in 0...max {
+                let item = viewArray[i]
+                let offset = item.position + currentOffset
+                var viewFrame = item.view.frame
+                viewFrame.origin = self.pointOnCircle(Float(180), center: self.center, index: offset)
+                item.view.frame = viewFrame
+//                let centerOffset = 1 - abs(offset - CGFloat(self.viewArray.count / 2)) / 100
+//                item.view.transform = CGAffineTransformScale(CGAffineTransformIdentity, centerOffset, centerOffset)
+//                if (i == 0) {
+//                    print(centerOffset)
+//                }
             }
-            print("Changed: \(movedDistance)")
-            currentOffset = panGesture.translationInView(self).y
             break
         case .Ended:
-            print("End: \(panGesture.velocityInView(self).y)")
-            currentOffset = 0.0
+            currentOffset = round((lastTouchY - panGesture.translationInView(self).y) / 100)
+            let storedCurrentOffset = currentOffset
+            let animationOptions: UIViewAnimationOptions = .CurveEaseOut
+            let keyframeAnimationOptions: UIViewKeyframeAnimationOptions = UIViewKeyframeAnimationOptions(rawValue: animationOptions.rawValue)
+            let allDuration: CGFloat = 0.6
+            for i in 0...self.max {
+
+                let item = self.viewArray[i]
+                let currentViewIndex = item.position + storedCurrentOffset
+                let midIndex = CGFloat(self.viewArray.count / 2)
+                let nextIndex = round((currentViewIndex) - panGesture.velocityInView(self).y / 1000)
+
+                let destPosition = self.pointOnCircle(Float(180), center: self.center, index: nextIndex)
+                let midPosition = self.pointOnCircle(Float(180), center: self.center, index: midIndex)
+                
+                let needPassbyMid = (midIndex > currentViewIndex) != (midIndex > nextIndex)
+                
+                let originToMidDistance = self.distanceBetweenPoints(item.view.center, midPosition)
+                let midToDestDistance = self.distanceBetweenPoints(midPosition, destPosition)
+                
+                let originToMidDuration = allDuration * originToMidDistance / (originToMidDistance + midToDestDistance)
+                UIView.animateKeyframesWithDuration(NSTimeInterval(allDuration), delay: 0, options: keyframeAnimationOptions,
+                    animations: { () -> Void in
+                        if (needPassbyMid) {
+                            
+                            [UIView .addKeyframeWithRelativeStartTime(0, relativeDuration: Double(originToMidDuration), animations: { () -> Void in
+                                var viewFrame = item.view.frame
+                                viewFrame.origin = midPosition
+                                item.view.frame = viewFrame
+                            })]
+                        }
+                        [UIView .addKeyframeWithRelativeStartTime(Double(needPassbyMid ? originToMidDuration : 0), relativeDuration: Double(needPassbyMid ? allDuration - originToMidDuration : allDuration), animations: { () -> Void in
+                            var viewFrame = item.view.frame
+                            viewFrame.origin = destPosition
+                            item.view.frame = viewFrame
+                            
+                        })]
+                        item.position = nextIndex
+                    }, completion:{ (Bool) -> Void in
+                        item.position = nextIndex
+                    }
+                
+                )
+            }
+            
             break
         default:
             break
         }
     }
     
-    func pointOnCircle(radius:Float, center:CGPoint, index: NSInteger) -> CGPoint {
-        let theta = Float(index) / 20.0 * Float(M_PI) * 2.0
-        let x = radius * cosf(theta)
-        let y = radius * sinf(theta)
-        return CGPointMake(CGFloat(x)+center.x,CGFloat(y)+center.y)
+    func pointOnCircle(radius:Float, center:CGPoint, index: CGFloat) -> CGPoint {
+        let midIndex: NSInteger = self.viewArray.count / 2
+        let distanceToMid = index - CGFloat(midIndex)
+        
+        let x = self.frame.size.width / CGFloat(2.0) + pow(abs(distanceToMid), 0.5) * 100
+        let y = self.frame.size.height / CGFloat(2.0) + pow(abs(distanceToMid), 2) * ((index - CGFloat(midIndex) > 0) ? 40 : -40)
+        return CGPointMake(x, y)
+    }
+    
+    func distanceBetweenPoints(point1: CGPoint, _ point2: CGPoint) -> CGFloat {
+        return CGFloat(hypotf(Float(point2.x - point1.x), Float(point2.y - point1.y)));
     }
 }
 
