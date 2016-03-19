@@ -15,18 +15,18 @@ class ViewController: UIViewController, InfiniteTableViewDelegate {
     override func viewDidLoad() {
         tableView?.delegate = self
         tableView?.cellHeight = 50
+        tableView?.registerClass(UITableViewCell.classForCoder(), forCellReuseIdentifier: "TEST")
     }
     
     func identifierForNewElementAtTop(tableView: InfiniteTableView, topIdentifier: AnyObject) -> AnyObject {
-        print(topIdentifier)
-        return topIdentifier as! Int - 1
+        return (topIdentifier as! NSDate).dateByAddingTimeInterval(-60 * 60 * 24)
     }
     
     func identifierForNewElementAtBottom(tableView: InfiniteTableView, bottomIdentifier: AnyObject) -> AnyObject {
-        return bottomIdentifier as! Int + 1
+        return (bottomIdentifier as! NSDate).dateByAddingTimeInterval(60 * 60 * 24)
     }
     
-    func cellForNewElement(tableView: InfiniteTableView, identifier: AnyObject) -> UITableViewCell {
+    func cellForIdentifier(tableView: InfiniteTableView, identifier: AnyObject) -> UITableViewCell {
         let cell = tableView.dequeueReusableCellWithIdentifier("TEST")
         cell.textLabel?.text = "\(identifier)"
         return cell
@@ -34,8 +34,9 @@ class ViewController: UIViewController, InfiniteTableViewDelegate {
     
     func initialIdentifiers(tableView: InfiniteTableView, count: UInt) -> [AnyObject] {
         var retArray = [AnyObject]()
+        let today = NSDate()
         for i in 0...count {
-            retArray.append(i)
+            retArray.append(today.dateByAddingTimeInterval(Double(i) * 60 * 60 * 24))
         }
         return retArray
     }

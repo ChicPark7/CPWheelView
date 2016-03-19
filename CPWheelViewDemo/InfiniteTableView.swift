@@ -11,7 +11,7 @@ import UIKit
 public protocol InfiniteTableViewDelegate : NSObjectProtocol {
     func identifierForNewElementAtTop(tableView: InfiniteTableView, topIdentifier: AnyObject) -> AnyObject
     func identifierForNewElementAtBottom(tableView: InfiniteTableView, bottomIdentifier: AnyObject) -> AnyObject
-    func cellForNewElement(tableView: InfiniteTableView, identifier: AnyObject) -> UITableViewCell
+    func cellForIdentifier(tableView: InfiniteTableView, identifier: AnyObject) -> UITableViewCell
     func initialIdentifiers(tableView: InfiniteTableView, count: UInt) -> [AnyObject]
 }
 
@@ -25,6 +25,7 @@ public class InfiniteTableView: UIView, UITableViewDelegate, UITableViewDataSour
         }
         set {
             tableView.rowHeight = newValue
+            self.layoutIfNeeded()
             self.cellIdentifierArray = self.delegate!.initialIdentifiers(self, count: UInt(self.numberOfRows))
         }
     }
@@ -51,24 +52,20 @@ public class InfiniteTableView: UIView, UITableViewDelegate, UITableViewDataSour
     
     func initProperties() {
         self.addSubview(self.tableView)
-        self.tableView.rowHeight = 100
         self.tableView.delegate = self
         self.tableView.dataSource = self
         self.tableView.bounces = false
         self.tableView.separatorStyle = .None
         self.tableView.showsHorizontalScrollIndicator = false
         self.tableView.showsVerticalScrollIndicator = false
-        self.tableView.registerClass(UITableViewCell.classForCoder(), forCellReuseIdentifier: "TEST")
     }
     
     override public func layoutSubviews() {
         super.layoutSubviews()
-        self.tableView.frame = self.bounds
-        self.cellIdentifierArray.removeAll()
-        for i in 0..<numberOfRows {
-            self.cellIdentifierArray.insert(i, atIndex: i)
+        if (cellIdentifierArray.count > 0) {
+            self.tableView.frame = self.bounds
+            self.tableView.selectRowAtIndexPath(NSIndexPath(forRow: 50000 + self.cellIdentifierArray.count / 2, inSection: 0), animated: false, scrollPosition: .Middle)
         }
-        self.tableView.selectRowAtIndexPath(NSIndexPath(forRow: 50000 + self.cellIdentifierArray.count / 2, inSection: 0), animated: false, scrollPosition: .Middle)
     }
     
     public func reloadData() {
@@ -95,7 +92,7 @@ public class InfiniteTableView: UIView, UITableViewDelegate, UITableViewDataSour
     
     public func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
         let realIndex = (indexPath.row + indexpathOffset) % self.cellIdentifierArray.count
-        if let cell = delegate?.cellForNewElement(self, identifier: self.cellIdentifierArray[realIndex]), delegate = self.delegate {
+        if let cell = delegate?.cellForIdentifier(self, identifier: self.cellIdentifierArray[realIndex]), delegate = self.delegate {
             cell.selectionStyle = .None
             if !isAdjustingOffset && indexPath.row != 0{
                 if realIndex == 0 {
@@ -119,7 +116,6 @@ public class InfiniteTableView: UIView, UITableViewDelegate, UITableViewDataSour
     }
 
     public func scrollViewDidEndDecelerating(scrollView: UIScrollView) {
-        print(self.cellIdentifierArray)
         isAdjustingOffset = true
         let movedLevel = Int(self.tableView.contentOffset.y - self.tableView.contentSize.height / 2) / (cellIdentifierArray.count * Int(self.tableView.rowHeight))
         let newContentOffset = self.tableView.contentOffset.y - self.tableView.rowHeight * CGFloat(cellIdentifierArray.count * movedLevel)
