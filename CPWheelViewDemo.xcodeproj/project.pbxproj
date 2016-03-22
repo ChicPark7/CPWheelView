@@ -60,12 +60,12 @@
 			children = (
 				3B1A29041C608901009B3A1C /* AppDelegate.swift */,
 				3B1A29061C608901009B3A1C /* InfiniteTableView.swift */,
+				3B6C25931C8FED4B00C8822E /* ViewController.swift */,
 				3B1A29081C608901009B3A1C /* Main.storyboard */,
 				3B1A290E1C608902009B3A1C /* Assets.xcassets */,
 				3B1A29101C608902009B3A1C /* LaunchScreen.storyboard */,
 				3B1A29131C608902009B3A1C /* Info.plist */,
 				3B1A290B1C608901009B3A1C /* CPWheelViewDemo.xcdatamodeld */,
-				3B6C25931C8FED4B00C8822E /* ViewController.swift */,
 			);
 			path = CPWheelViewDemo;
 			sourceTree = "<group>";

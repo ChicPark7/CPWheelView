@@ -13,10 +13,11 @@ public protocol InfiniteTableViewDelegate : NSObjectProtocol {
     func identifierForNewElementAtBottom(tableView: InfiniteTableView, bottomIdentifier: AnyObject) -> AnyObject
     func cellForIdentifier(tableView: InfiniteTableView, identifier: AnyObject) -> UITableViewCell
     func initialIdentifiers(tableView: InfiniteTableView, count: UInt) -> [AnyObject]
+    func infiniteTableView(tableView: InfiniteTableView, didSelectIdentifier identifier: AnyObject)
 }
 
 public class InfiniteTableView: UIView, UITableViewDelegate, UITableViewDataSource {
-    
+    // MARK: Properties
     public var delegate: InfiniteTableViewDelegate?
     public var cellIdentifierArray = [AnyObject]()
     public var cellHeight: CGFloat {
@@ -40,6 +41,8 @@ public class InfiniteTableView: UIView, UITableViewDelegate, UITableViewDataSour
         }
     }
     
+    // MARK: Initializer
+    
     override init(frame: CGRect) {
         super.init(frame: frame)
         initProperties()
@@ -60,13 +63,17 @@ public class InfiniteTableView: UIView, UITableViewDelegate, UITableViewDataSour
         self.tableView.showsVerticalScrollIndicator = false
     }
     
+    // MARK: Override
+    
     override public func layoutSubviews() {
         super.layoutSubviews()
         if (cellIdentifierArray.count > 0) {
             self.tableView.frame = self.bounds
-            self.tableView.selectRowAtIndexPath(NSIndexPath(forRow: 50000 + self.cellIdentifierArray.count / 2, inSection: 0), animated: false, scrollPosition: .Middle)
+            self.scrollToCenter()
         }
     }
+    
+    // MARK: Public functions
     
     public func reloadData() {
         self.tableView.reloadData()
@@ -84,7 +91,22 @@ public class InfiniteTableView: UIView, UITableViewDelegate, UITableViewDataSour
         return tableView.dequeueReusableCellWithIdentifier(identifier)!
     }
     
-// MARK: Tableview delegate, datasource
+    // MARK: Private functions
+    
+    public func realIndexAtIndexPath(indexPath: NSIndexPath) -> Int {
+        return (indexPath.row + indexpathOffset) % self.cellIdentifierArray.count
+    }
+
+    public func scrollToCenter() {
+        let movedLevel = Int(self.tableView.contentOffset.y - self.tableView.contentSize.height / 2) / (cellIdentifierArray.count * Int(self.tableView.rowHeight))
+        let centerOffset = (self.tableView.rowHeight * CGFloat(cellIdentifierArray.count) - self.tableView.frame.size.height) / 2
+        let newContentOffset = self.tableView.contentOffset.y - self.tableView.rowHeight * CGFloat(cellIdentifierArray.count * movedLevel) + centerOffset
+        
+        self.tableView.setContentOffset(CGPointMake(0, newContentOffset), animated: false)
+    }
+
+    
+    // MARK: Tableview delegate, datasource
     
     public func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return 100000
@@ -113,6 +135,12 @@ public class InfiniteTableView: UIView, UITableViewDelegate, UITableViewDataSour
         }
         
         return UITableViewCell();
+    }
+    
+    public func tableView(tableView: UITableView, didSelectRowAtIndexPath indexPath: NSIndexPath) {
+        if let _ = self.delegate {
+            self.delegate?.infiniteTableView(self, didSelectIdentifier: self.cellIdentifierArray[self.realIndexAtIndexPath(indexPath)])
+        }
     }
 
     public func scrollViewDidEndDecelerating(scrollView: UIScrollView) {

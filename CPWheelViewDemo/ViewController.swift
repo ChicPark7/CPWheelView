@@ -36,8 +36,18 @@ class ViewController: UIViewController, InfiniteTableViewDelegate {
         var retArray = [AnyObject]()
         let today = NSDate()
         for i in 0...count {
-            retArray.append(today.dateByAddingTimeInterval(Double(i) * 60 * 60 * 24))
+            let dateGap = Int(i) - Int(count + 1) / 2
+            let date = today.dateByAddingTimeInterval(Double(dateGap) * 60 * 60 * 24)
+            retArray.append(date)
         }
         return retArray
+    }
+    
+    func infiniteTableView(tableView: InfiniteTableView, didSelectIdentifier identifier: AnyObject) {
+        let alert = UIAlertController(title: "InfiniteTableView", message: "\(identifier)", preferredStyle: .Alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .Destructive, handler: { (UIAlertAction) -> Void in
+            alert.dismissViewControllerAnimated(true, completion: nil)
+        }))
+        self.presentViewController(alert, animated: true, completion: nil)
     }
 }
